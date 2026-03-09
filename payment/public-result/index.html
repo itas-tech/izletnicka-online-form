@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>TO Kotor | Status plaćanja</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-main: #031023;
+      --bg-card: rgba(8, 31, 54, 0.9);
+      --text-main: #ecf4ff;
+      --text-muted: #b6c7df;
+      --border: rgba(255, 255, 255, 0.18);
+      --accent: #6df0d9;
+      --radius: 20px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Sora", system-ui, sans-serif;
+      color: var(--text-main);
+      background:
+        radial-gradient(circle at 8% 10%, rgba(79, 195, 255, 0.32), transparent 35%),
+        radial-gradient(circle at 86% 12%, rgba(109, 240, 217, 0.24), transparent 38%),
+        linear-gradient(165deg, rgba(0, 9, 20, 0.75), rgba(2, 24, 43, 0.95)),
+        url("../../assets/background.png") center/cover no-repeat;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+    }
+
+    .card {
+      width: min(560px, 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      backdrop-filter: blur(7px);
+      box-shadow: 0 20px 44px rgba(0, 0, 0, 0.35);
+      padding: 24px 20px;
+      text-align: center;
+    }
+
+    .logo {
+      width: 82px;
+      height: auto;
+      display: block;
+      margin: 0 auto 10px;
+      object-fit: contain;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.28rem, 4.6vw, 1.95rem);
+      line-height: 1.12;
+    }
+
+    p {
+      margin: 10px 0 0;
+      color: var(--text-muted);
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
+
+    .order {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(109, 240, 217, 0.35);
+      background: rgba(8, 25, 38, 0.72);
+      color: #d7fff6;
+      word-break: break-all;
+      font-size: 0.92rem;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    a.btn {
+      display: inline-block;
+      text-decoration: none;
+      color: #06213a;
+      background: linear-gradient(135deg, #89d8ff, var(--accent));
+      border-radius: 999px;
+      padding: 11px 18px;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <img class="logo" src="../../assets/to_kotor_logo.png" alt="TO Kotor" />
+    <h1>Zahvaljujemo, zahtjev za plaćanje je zabilježen</h1>
+    <p>
+      Ukoliko je transakcija uspješno završena, potvrda će biti obrađena u sistemu.
+      Po potrebi, pokažite zaposlenom identifikator plaćanja ispod.
+    </p>
+    <div class="order" id="orderBlock">Identifikator plaćanja: /</div>
+    <div class="actions">
+      <a class="btn" href="../../index.html">Nazad na formu</a>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      const orderBlock = document.getElementById("orderBlock");
+      const parts = window.location.pathname.split("/").filter(Boolean);
+      let merchantOrderId = "";
+
+      const marker = parts.findIndex(p => p.toLowerCase() === "public-result");
+      if (marker >= 0 && parts.length > marker + 1) {
+        merchantOrderId = decodeURIComponent(parts[marker + 1]);
+      }
+
+      if (!merchantOrderId) {
+        const url = new URL(window.location.href);
+        merchantOrderId = url.searchParams.get("merchantOrderId")
+          || url.searchParams.get("reference")
+          || "";
+      }
+
+      orderBlock.textContent = merchantOrderId
+        ? `Identifikator plaćanja: ${merchantOrderId}`
+        : "Identifikator plaćanja: /";
+    })();
+  </script>
+</body>
+</html>
