@@ -25,17 +25,31 @@ Edit `config.js`:
 - `apiBaseUrl` -> API URL this site should call
 - `localApiBaseUrl` -> API URL used only when site is opened from `localhost` / `127.0.0.1`
 
+## API endpoints used
+
+- `GET /api/v2/ITPayments/public/countries` (loads country picker)
+- `POST /api/v2/ITPayments/public/checkout`
+
 ## API payload sent
 
 ```json
 {
-  "agencyName": "W Touristic",
-  "guideName": "Ilija Todorovic",
+  "agencyName": "Sample Agency",
+  "guideName": "Sample Guide",
   "guideEmail": "guide@example.com",
-  "guidePhone": "+38267123456",
   "reference": "INT-001",
   "note": "Optional note",
   "brojOsoba": 12,
+  "guestsByCountry": [
+    {
+      "drzavaID": 1,
+      "brojOsoba": 8
+    },
+    {
+      "drzavaID": 44,
+      "brojOsoba": 4
+    }
+  ],
   "voucherDate": "2026-03-09T00:00:00",
   "locale": "me"
 }
