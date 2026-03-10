@@ -6,6 +6,7 @@ Mobile-first public checkout form for **Scenario 3** (`POST /api/v2/ITPayments/p
 
 - Static HTML/CSS/JS (Netlify-ready, no build step)
 - Single configured API base URL from `config.js`
+- Built-in localization (`ME` / `EN`) on the public form
 
 ## Run locally
 
@@ -50,10 +51,11 @@ Edit `config.js`:
       "brojOsoba": 4
     }
   ],
-  "voucherDate": "2026-03-09T00:00:00",
   "locale": "me"
 }
 ```
+
+`voucherDate` is no longer sent by the form UI. Backend uses current server datetime when it is omitted.
 
 ## Netlify deployment
 

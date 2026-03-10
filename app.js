@@ -6,7 +6,7 @@
   const resultOrder = document.getElementById("resultOrder");
   const resultPayment = document.getElementById("resultPayment");
   const resultLink = document.getElementById("resultLink");
-  const voucherDateInput = document.getElementById("voucherDate");
+  const langSelect = document.getElementById("langSelect");
   const brojOsobaInput = document.getElementById("brojOsoba");
   const guestCountrySelect = document.getElementById("guestCountry");
   const guestCountInput = document.getElementById("guestCount");
@@ -14,13 +14,118 @@
   const guestsList = document.getElementById("guestsList");
   const guestBuilderHint = document.getElementById("guestBuilderHint");
 
+  const STORAGE_LANG_KEY = "izletnicka_lang";
+  const TRANSLATIONS = {
+    me: {
+      pageTitle: "TO Kotor | Online plaćanje izletničke takse",
+      languageLabel: "Jezik",
+      heroKicker: "Turistička organizacija opštine Kotor",
+      heroTitle: "Online plaćanje izletničke takse",
+      heroSubtitle: "Unesite podatke i nastavite na sigurnu kartičnu naplatu.",
+      panelTitle: "Podaci za uplatu",
+      panelSubtitle: "Popunite tražene podatke i nastavite na sigurnu kartičnu naplatu.",
+      labelAgencyName: "Naziv agencije",
+      placeholderAgencyName: "Unesite naziv agencije",
+      labelGuideName: "Ime vodiča",
+      placeholderGuideName: "Unesite ime vodiča",
+      labelGuestsByCountry: "Gosti po državi",
+      countryPlaceholder: "Izaberite državu",
+      placeholderGuestCount: "Broj",
+      addGuestBtn: "Dodaj",
+      guestBuilderHintDefault: "Dodajte jednu ili više država sa brojem osoba.",
+      guestBuilderHintTotal: "Ukupno unijeto osoba: {count}",
+      guestListEmpty: "Nijeste dodali goste po državi.",
+      guestRemove: "Ukloni",
+      labelGuideEmail: "Email za potvrdu",
+      placeholderGuideEmail: "Unesite email adresu",
+      labelReference: "Referenca",
+      placeholderReference: "Interna šifra (opciono)",
+      labelNote: "Napomena",
+      placeholderNote: "Napomena za internu evidenciju (opciono)",
+      labelTotalGuests: "Ukupno osoba",
+      submitButton: "Nastavi na kartično plaćanje",
+      submitButtonLoading: "Kreiranje plaćanja...",
+      resultMerchantOrder: "Merchant order:",
+      resultPaymentId: "Payment ID:",
+      resultOpenPaymentLink: "Otvori stranicu za plaćanje",
+      errorApiUrlMissing: "API URL nije konfigurisan. Kontaktirajte podršku.",
+      errorCannotLoadCountries: "Nije moguće učitati listu država. Pokušajte ponovo.",
+      errorCountryListEmpty: "Lista država je prazna. Kontaktirajte podršku.",
+      errorCountryListUnavailable: "Lista država nije dostupna.",
+      errorSelectCountry: "Izaberite državu.",
+      errorGuestCountPositive: "Broj osoba mora biti cijeli broj veći od 0.",
+      errorAgencyRequired: "Naziv agencije je obavezan.",
+      errorEmailRequired: "Email je obavezan.",
+      errorGuestsRequired: "Unesite barem jednu državu sa brojem osoba.",
+      errorGuestMax: "Ukupan broj osoba ne može biti veći od 10000.",
+      errorApiRedirectMissing: "API nije vratio redirect URL.",
+      errorWithStatus: "Greška ({status})",
+      errorApiUnreachable: "Nije moguće kontaktirati API. Provjerite CORS i dostupnost API-ja.",
+      successOpenPaymentPage: "Za nastavak otvorite stranicu za plaćanje."
+    },
+    en: {
+      pageTitle: "TO Kotor | Online excursion tax payment",
+      languageLabel: "Language",
+      heroKicker: "Tourist organization of municipality Kotor",
+      heroTitle: "Online excursion tax payment",
+      heroSubtitle: "Enter payment details and continue to secure card checkout.",
+      panelTitle: "Payment details",
+      panelSubtitle: "Fill in the required details and continue to secure card checkout.",
+      labelAgencyName: "Agency name",
+      placeholderAgencyName: "Enter agency name",
+      labelGuideName: "Guide name",
+      placeholderGuideName: "Enter guide name",
+      labelGuestsByCountry: "Guests by country",
+      countryPlaceholder: "Select country",
+      placeholderGuestCount: "Count",
+      addGuestBtn: "Add",
+      guestBuilderHintDefault: "Add one or more countries with guest counts.",
+      guestBuilderHintTotal: "Total guests entered: {count}",
+      guestListEmpty: "No guests by country added yet.",
+      guestRemove: "Remove",
+      labelGuideEmail: "Confirmation email",
+      placeholderGuideEmail: "Enter email address",
+      labelReference: "Reference",
+      placeholderReference: "Internal code (optional)",
+      labelNote: "Note",
+      placeholderNote: "Internal note (optional)",
+      labelTotalGuests: "Total guests",
+      submitButton: "Continue to card payment",
+      submitButtonLoading: "Creating payment...",
+      resultMerchantOrder: "Merchant order:",
+      resultPaymentId: "Payment ID:",
+      resultOpenPaymentLink: "Open payment page",
+      errorApiUrlMissing: "API URL is not configured. Contact support.",
+      errorCannotLoadCountries: "Unable to load countries list. Please try again.",
+      errorCountryListEmpty: "Countries list is empty. Contact support.",
+      errorCountryListUnavailable: "Countries list is unavailable.",
+      errorSelectCountry: "Select a country.",
+      errorGuestCountPositive: "Guest count must be a whole number greater than 0.",
+      errorAgencyRequired: "Agency name is required.",
+      errorEmailRequired: "Email is required.",
+      errorGuestsRequired: "Add at least one country with guest count.",
+      errorGuestMax: "Total guest count cannot exceed 10000.",
+      errorApiRedirectMissing: "API did not return a redirect URL.",
+      errorWithStatus: "Error ({status})",
+      errorApiUnreachable: "Unable to reach API. Check CORS and API availability.",
+      successOpenPaymentPage: "Open the payment page to continue."
+    }
+  };
+
   const cfg = window.IZLETNICKA_CONFIG || {};
   const apiBase = resolveApiBase(cfg);
   let guestsByCountry = [];
   let countriesReady = false;
+  let currentLang = "me";
+  let isLoading = false;
 
-  setDefaultDate();
   initializeGuestBuilder();
+  if (langSelect) {
+    langSelect.addEventListener("change", () => {
+      setLanguage(langSelect.value);
+    });
+  }
+  setLanguage(resolveInitialLanguage());
   loadCountries();
 
   form.addEventListener("submit", async (event) => {
@@ -34,7 +139,7 @@
     }
 
     if (!apiBase) {
-      setFeedback("API URL nije konfigurisan. Kontaktirajte podršku.", true);
+      setFeedback(tr("errorApiUrlMissing"), true);
       return;
     }
 
@@ -55,13 +160,13 @@
       if (!response.ok) {
         const err = data && typeof data.message === "string"
           ? data.message
-          : `Greška (${response.status})`;
+          : tr("errorWithStatus", { status: response.status });
         setFeedback(err, true);
         return;
       }
 
       if (!data || !data.redirectUrl) {
-        setFeedback("API nije vratio redirect URL.", true);
+        setFeedback(tr("errorApiRedirectMissing"), true);
         return;
       }
 
@@ -70,13 +175,12 @@
       resultLink.href = data.redirectUrl;
       resultCard.hidden = false;
 
-      setFeedback("Za nastavak otvorite stranicu za plaćanje.", false, true);
+      setFeedback(tr("successOpenPaymentPage"), false, true);
 
       form.reset();
-      setDefaultDate();
       resetGuestBuilder();
     } catch (error) {
-      setFeedback("Nije moguće kontaktirati API. Provjerite CORS i dostupnost API-ja.", true);
+      setFeedback(tr("errorApiUnreachable"), true);
     } finally {
       setLoading(false);
     }
@@ -94,6 +198,84 @@
       return config.apiBaseUrl.trim();
     }
     return "";
+  }
+
+  function resolveInitialLanguage() {
+    const queryLang = new URLSearchParams(window.location.search).get("lang");
+    if (queryLang === "en" || queryLang === "me") {
+      return queryLang;
+    }
+
+    try {
+      const stored = window.localStorage.getItem(STORAGE_LANG_KEY);
+      if (stored === "en" || stored === "me") {
+        return stored;
+      }
+    } catch (error) {
+      // Ignore storage errors and continue with fallback.
+    }
+
+    const browserLang = (navigator.language || "").toLowerCase();
+    return browserLang.startsWith("en") ? "en" : "me";
+  }
+
+  function setLanguage(language) {
+    currentLang = language === "en" ? "en" : "me";
+
+    if (langSelect) {
+      langSelect.value = currentLang;
+      langSelect.setAttribute("aria-label", tr("languageLabel"));
+    }
+
+    try {
+      window.localStorage.setItem(STORAGE_LANG_KEY, currentLang);
+    } catch (error) {
+      // Ignore storage errors to keep form usable.
+    }
+
+    applyTranslations();
+  }
+
+  function applyTranslations() {
+    document.documentElement.lang = currentLang === "en" ? "en" : "me";
+    document.title = tr("pageTitle");
+
+    document.querySelectorAll("[data-i18n]").forEach((element) => {
+      const key = element.getAttribute("data-i18n");
+      if (!key) {
+        return;
+      }
+
+      element.textContent = tr(key);
+    });
+
+    document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+      const key = element.getAttribute("data-i18n-placeholder");
+      if (!key) {
+        return;
+      }
+
+      element.setAttribute("placeholder", tr(key));
+    });
+
+    const firstCountryOption = guestCountrySelect?.querySelector("option[value='']");
+    if (firstCountryOption) {
+      firstCountryOption.textContent = tr("countryPlaceholder");
+    }
+
+    renderGuestRows();
+    updateSubmitButtonText();
+  }
+
+  function tr(key, params = {}) {
+    const dict = TRANSLATIONS[currentLang] || TRANSLATIONS.me;
+    let text = dict[key] || TRANSLATIONS.me[key] || key;
+
+    Object.entries(params).forEach(([name, value]) => {
+      text = text.replaceAll(`{${name}}`, String(value));
+    });
+
+    return text;
   }
 
   function initializeGuestBuilder() {
@@ -129,7 +311,7 @@
 
   async function loadCountries() {
     if (!apiBase) {
-      setFeedback("API URL nije konfigurisan. Kontaktirajte podršku.", true);
+      setFeedback(tr("errorApiUrlMissing"), true);
       disableGuestBuilder(true);
       return;
     }
@@ -142,7 +324,7 @@
       });
 
       if (!response.ok) {
-        setFeedback("Nije moguće učitati listu država. Pokušajte ponovo.", true);
+        setFeedback(tr("errorCannotLoadCountries"), true);
         disableGuestBuilder(true);
         return;
       }
@@ -153,13 +335,13 @@
       countriesReady = countries.length > 0;
 
       if (!countriesReady) {
-        setFeedback("Lista država je prazna. Kontaktirajte podršku.", true);
+        setFeedback(tr("errorCountryListEmpty"), true);
         disableGuestBuilder(true);
       } else {
         disableGuestBuilder(false);
       }
     } catch (error) {
-      setFeedback("Nije moguće učitati listu država. Provjerite API i CORS.", true);
+      setFeedback(tr("errorCannotLoadCountries"), true);
       disableGuestBuilder(true);
     }
   }
@@ -169,7 +351,7 @@
 
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = "Izaberite državu";
+    placeholder.textContent = tr("countryPlaceholder");
     guestCountrySelect.appendChild(placeholder);
 
     for (const item of items) {
@@ -198,7 +380,7 @@
 
   function addGuestRow() {
     if (!countriesReady) {
-      setFeedback("Lista država nije dostupna.", true);
+      setFeedback(tr("errorCountryListUnavailable"), true);
       return;
     }
 
@@ -206,12 +388,12 @@
     const guestsCount = Number(guestCountInput.value);
 
     if (!Number.isInteger(countryId) || countryId <= 0) {
-      setFeedback("Izaberite državu.", true);
+      setFeedback(tr("errorSelectCountry"), true);
       return;
     }
 
     if (!Number.isInteger(guestsCount) || guestsCount <= 0) {
-      setFeedback("Broj osoba mora biti cijeli broj veći od 0.", true);
+      setFeedback(tr("errorGuestCountPositive"), true);
       return;
     }
 
@@ -229,7 +411,8 @@
       });
     }
 
-    guestsByCountry.sort((a, b) => a.naziv.localeCompare(b.naziv, "sr-Latn-ME"));
+    const sortLocale = currentLang === "en" ? "en-US" : "sr-Latn-ME";
+    guestsByCountry.sort((a, b) => a.naziv.localeCompare(b.naziv, sortLocale));
     guestCountInput.value = "";
     guestCountrySelect.value = "";
     clearFeedback();
@@ -242,9 +425,9 @@
     if (guestsByCountry.length === 0) {
       const empty = document.createElement("li");
       empty.className = "guests-item";
-      empty.innerHTML = '<p class="guests-item-text">Nijeste dodali goste po državi.</p>';
+      empty.innerHTML = `<p class="guests-item-text">${escapeHtml(tr("guestListEmpty"))}</p>`;
       guestsList.appendChild(empty);
-      guestBuilderHint.textContent = "Dodajte jednu ili više država sa brojem osoba.";
+      guestBuilderHint.textContent = tr("guestBuilderHintDefault");
       brojOsobaInput.value = "0";
       return;
     }
@@ -254,13 +437,13 @@
       item.className = "guests-item";
       item.innerHTML = `
         <p class="guests-item-text">${escapeHtml(row.naziv)}: <strong>${row.brojOsoba}</strong></p>
-        <button type="button" class="guests-remove" data-country-id="${row.drzavaID}">Ukloni</button>
+        <button type="button" class="guests-remove" data-country-id="${row.drzavaID}">${escapeHtml(tr("guestRemove"))}</button>
       `;
       guestsList.appendChild(item);
     }
 
     const totalGuests = guestsByCountry.reduce((sum, row) => sum + row.brojOsoba, 0);
-    guestBuilderHint.textContent = `Ukupno unijeto osoba: ${totalGuests}`;
+    guestBuilderHint.textContent = tr("guestBuilderHintTotal", { count: totalGuests });
     brojOsobaInput.value = String(totalGuests);
   }
 
@@ -282,40 +465,30 @@
       .replaceAll("'", "&#39;");
   }
 
-  function setDefaultDate() {
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const dd = String(now.getDate()).padStart(2, "0");
-    voucherDateInput.value = `${yyyy}-${mm}-${dd}`;
-  }
-
   function buildPayload() {
     const agencyName = form.agencyName.value.trim();
     const guideEmail = form.guideEmail.value.trim();
     const totalGuests = guestsByCountry.reduce((sum, row) => sum + row.brojOsoba, 0);
 
     if (!agencyName) {
-      setFeedback("Naziv agencije je obavezan.", true);
+      setFeedback(tr("errorAgencyRequired"), true);
       return null;
     }
 
     if (!guideEmail) {
-      setFeedback("Email je obavezan.", true);
+      setFeedback(tr("errorEmailRequired"), true);
       return null;
     }
 
     if (guestsByCountry.length === 0 || totalGuests <= 0) {
-      setFeedback("Unesite barem jednu državu sa brojem osoba.", true);
+      setFeedback(tr("errorGuestsRequired"), true);
       return null;
     }
 
     if (totalGuests > 10000) {
-      setFeedback("Ukupan broj osoba ne može biti veći od 10000.", true);
+      setFeedback(tr("errorGuestMax"), true);
       return null;
     }
-
-    const voucherDateValue = form.voucherDate.value;
 
     return {
       agencyName,
@@ -328,8 +501,7 @@
         drzavaID: row.drzavaID,
         brojOsoba: row.brojOsoba
       })),
-      voucherDate: voucherDateValue ? `${voucherDateValue}T00:00:00` : null,
-      locale: "me"
+      locale: currentLang
     };
   }
 
@@ -338,12 +510,15 @@
     return v.length > 0 ? v : null;
   }
 
-  function setLoading(isLoading) {
+  function setLoading(isNowLoading) {
+    isLoading = Boolean(isNowLoading);
     submitBtn.disabled = isLoading;
     addGuestBtn.disabled = isLoading || !countriesReady;
-    submitBtn.textContent = isLoading
-      ? "Kreiranje plaćanja..."
-      : "Nastavi na kartično plaćanje";
+    updateSubmitButtonText();
+  }
+
+  function updateSubmitButtonText() {
+    submitBtn.textContent = isLoading ? tr("submitButtonLoading") : tr("submitButton");
   }
 
   function clearFeedback() {
