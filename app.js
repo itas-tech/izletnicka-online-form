@@ -61,7 +61,8 @@
       errorApiRedirectMissing: "API nije vratio redirect URL.",
       errorWithStatus: "Greška ({status})",
       errorApiUnreachable: "Nije moguće kontaktirati API. Provjerite CORS i dostupnost API-ja.",
-      successOpenPaymentPage: "Za nastavak otvorite stranicu za plaćanje."
+      successOpenPaymentPage: "Za nastavak otvorite stranicu za plaćanje.",
+      redirectingToPayment: "Preusmjeravanje na stranicu za plaćanje..."
     },
     en: {
       pageTitle: "TO Kotor | Online excursion tax payment",
@@ -108,7 +109,8 @@
       errorApiRedirectMissing: "API did not return a redirect URL.",
       errorWithStatus: "Error ({status})",
       errorApiUnreachable: "Unable to reach API. Check CORS and API availability.",
-      successOpenPaymentPage: "Open the payment page to continue."
+      successOpenPaymentPage: "Open the payment page to continue.",
+      redirectingToPayment: "Redirecting to payment page..."
     }
   };
 
@@ -145,6 +147,8 @@
 
     const endpoint = `${apiBase.replace(/\/$/, "")}/api/v2/ITPayments/public/checkout`;
 
+    let isRedirecting = false;
+
     try {
       setLoading(true);
       const response = await fetch(endpoint, {
@@ -170,19 +174,15 @@
         return;
       }
 
-      resultOrder.textContent = data.merchantOrderId || "-";
-      resultPayment.textContent = data.paymentId != null ? String(data.paymentId) : "-";
-      resultLink.href = data.redirectUrl;
-      resultCard.hidden = false;
-
-      setFeedback(tr("successOpenPaymentPage"), false, true);
-
-      form.reset();
-      resetGuestBuilder();
+      isRedirecting = true;
+      setFeedback(tr("redirectingToPayment"), false, true);
+      window.location.assign(data.redirectUrl);
     } catch (error) {
       setFeedback(tr("errorApiUnreachable"), true);
     } finally {
-      setLoading(false);
+      if (!isRedirecting) {
+        setLoading(false);
+      }
     }
   });
 
