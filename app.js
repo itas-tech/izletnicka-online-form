@@ -15,6 +15,7 @@
   const guestBuilderHint = document.getElementById("guestBuilderHint");
 
   const STORAGE_LANG_KEY = "izletnicka_lang";
+  const COUNTRY_TRANSLATIONS = window.IZLETNICKA_COUNTRIES || {};
   const TRANSLATIONS = {
     me: {
       pageTitle: "TO Kotor | Online plaćanje izletničke takse",
@@ -62,7 +63,14 @@
       errorWithStatus: "Greška ({status})",
       errorApiUnreachable: "Nije moguće kontaktirati API. Provjerite CORS i dostupnost API-ja.",
       successOpenPaymentPage: "Za nastavak otvorite stranicu za plaćanje.",
-      redirectingToPayment: "Preusmjeravanje na stranicu za plaćanje..."
+      redirectingToPayment: "Preusmjeravanje na stranicu za plaćanje...",
+      contactTitle: "Kontakt",
+      contactMunicipality: "Opština Kotor",
+      contactOrganization: "TO Kotor",
+      contactAddress: "Škaljari bb, 85330 Kotor",
+      contactPhoneLabel: "Telefon:",
+      contactEmailLabel: "Email:",
+      contactWebLabel: "Web:"
     },
     en: {
       pageTitle: "TO Kotor | Online excursion tax payment",
@@ -110,13 +118,21 @@
       errorWithStatus: "Error ({status})",
       errorApiUnreachable: "Unable to reach API. Check CORS and API availability.",
       successOpenPaymentPage: "Open the payment page to continue.",
-      redirectingToPayment: "Redirecting to payment page..."
+      redirectingToPayment: "Redirecting to payment page...",
+      contactTitle: "Contact",
+      contactMunicipality: "Municipality of Kotor",
+      contactOrganization: "TO Kotor",
+      contactAddress: "Škaljari bb, 85330 Kotor",
+      contactPhoneLabel: "Phone:",
+      contactEmailLabel: "Email:",
+      contactWebLabel: "Web:"
     }
   };
 
   const cfg = window.IZLETNICKA_CONFIG || {};
   const apiBase = resolveApiBase(cfg);
   let guestsByCountry = [];
+  let availableCountries = [];
   let countriesReady = false;
   let currentLang = "me";
   let isLoading = false;
@@ -258,11 +274,11 @@
       element.setAttribute("placeholder", tr(key));
     });
 
-    const firstCountryOption = guestCountrySelect?.querySelector("option[value='']");
-    if (firstCountryOption) {
-      firstCountryOption.textContent = tr("countryPlaceholder");
+    if (guestCountrySelect) {
+      renderCountryOptions(guestCountrySelect.value);
     }
 
+    sortGuestRows();
     renderGuestRows();
     updateSubmitButtonText();
   }
@@ -332,7 +348,7 @@
       const data = await response.json().catch(() => []);
       const countries = Array.isArray(data) ? data : [];
       fillCountries(countries);
-      countriesReady = countries.length > 0;
+      countriesReady = availableCountries.length > 0;
 
       if (!countriesReady) {
         setFeedback(tr("errorCountryListEmpty"), true);
@@ -347,28 +363,10 @@
   }
 
   function fillCountries(items) {
-    guestCountrySelect.innerHTML = "";
-
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = tr("countryPlaceholder");
-    guestCountrySelect.appendChild(placeholder);
-
-    for (const item of items) {
-      const drzavaID = Number(item.drzavaID ?? item.drzavaId ?? item.DrzavaID ?? item.DrzavaId);
-      const naziv = String(item.naziv ?? item.Naziv ?? "").trim();
-      const skracenica = String(item.skracenica ?? item.Skracenica ?? "").trim();
-
-      if (!Number.isInteger(drzavaID) || drzavaID <= 0 || !naziv) {
-        continue;
-      }
-
-      const option = document.createElement("option");
-      option.value = String(drzavaID);
-      option.textContent = skracenica ? `${naziv} (${skracenica})` : naziv;
-      option.setAttribute("data-country-name", naziv);
-      guestCountrySelect.appendChild(option);
-    }
+    availableCountries = items
+      .map(normalizeCountry)
+      .filter(Boolean);
+    renderCountryOptions();
   }
 
   function disableGuestBuilder(disabled) {
@@ -397,8 +395,11 @@
       return;
     }
 
-    const selectedOption = guestCountrySelect.options[guestCountrySelect.selectedIndex];
-    const countryName = (selectedOption?.getAttribute("data-country-name") || selectedOption?.textContent || "").trim();
+    const selectedCountry = availableCountries.find((item) => item.drzavaID === countryId);
+    if (!selectedCountry) {
+      setFeedback(tr("errorSelectCountry"), true);
+      return;
+    }
 
     const existing = guestsByCountry.find((row) => row.drzavaID === countryId);
     if (existing) {
@@ -406,13 +407,14 @@
     } else {
       guestsByCountry.push({
         drzavaID: countryId,
-        naziv: countryName,
+        nazivMe: selectedCountry.nazivMe,
+        nazivEn: selectedCountry.nazivEn,
+        skracenica: selectedCountry.skracenica,
         brojOsoba: guestsCount
       });
     }
 
-    const sortLocale = currentLang === "en" ? "en-US" : "sr-Latn-ME";
-    guestsByCountry.sort((a, b) => a.naziv.localeCompare(b.naziv, sortLocale));
+    sortGuestRows();
     guestCountInput.value = "";
     guestCountrySelect.value = "";
     clearFeedback();
@@ -436,7 +438,7 @@
       const item = document.createElement("li");
       item.className = "guests-item";
       item.innerHTML = `
-        <p class="guests-item-text">${escapeHtml(row.naziv)}: <strong>${row.brojOsoba}</strong></p>
+        <p class="guests-item-text">${escapeHtml(getCountryDisplayName(row))}: <strong>${row.brojOsoba}</strong></p>
         <button type="button" class="guests-remove" data-country-id="${row.drzavaID}">${escapeHtml(tr("guestRemove"))}</button>
       `;
       guestsList.appendChild(item);
@@ -463,6 +465,71 @@
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#39;");
+  }
+
+  function normalizeCountry(item) {
+    const drzavaID = Number(item.drzavaID ?? item.drzavaId ?? item.DrzavaID ?? item.DrzavaId);
+    const skracenica = String(item.skracenica ?? item.Skracenica ?? "").trim();
+    if (!Number.isInteger(drzavaID) || drzavaID <= 0) {
+      return null;
+    }
+
+    const localizedName = getLocalizedCountryName(item.naziv ?? item.Naziv, drzavaID, skracenica);
+    const nazivMe = localizedName.me || localizedName.en || skracenica;
+    const nazivEn = localizedName.en || localizedName.me || skracenica;
+
+    return {
+      drzavaID,
+      skracenica,
+      nazivMe,
+      nazivEn
+    };
+  }
+
+  function getLocalizedCountryName(rawName, drzavaID, skracenica) {
+    const fallback = COUNTRY_TRANSLATIONS[String(drzavaID)] || null;
+    const raw = rawName && typeof rawName === "object" ? rawName : null;
+    const meFromApi = raw ? String(raw.MNE ?? raw.mne ?? raw.Me ?? "").trim() : "";
+    const enFromApi = raw ? String(raw.ENG ?? raw.eng ?? raw.En ?? "").trim() : "";
+    const plainName = typeof rawName === "string" ? rawName.trim() : "";
+
+    return {
+      me: meFromApi || plainName || (fallback ? fallback.MNE : "") || skracenica,
+      en: enFromApi || (fallback ? fallback.ENG : "") || plainName || skracenica
+    };
+  }
+
+  function renderCountryOptions(selectedValue) {
+    if (!guestCountrySelect) {
+      return;
+    }
+
+    const currentValue = selectedValue == null ? guestCountrySelect.value : selectedValue;
+    guestCountrySelect.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = tr("countryPlaceholder");
+    guestCountrySelect.appendChild(placeholder);
+
+    for (const item of availableCountries) {
+      const option = document.createElement("option");
+      option.value = String(item.drzavaID);
+      option.textContent = getCountryDisplayName(item);
+      guestCountrySelect.appendChild(option);
+    }
+
+    guestCountrySelect.value = currentValue || "";
+  }
+
+  function getCountryDisplayName(country) {
+    const baseName = currentLang === "en" ? country.nazivEn : country.nazivMe;
+    return country.skracenica ? `${baseName} (${country.skracenica})` : baseName;
+  }
+
+  function sortGuestRows() {
+    const sortLocale = currentLang === "en" ? "en-US" : "sr-Latn-ME";
+    guestsByCountry.sort((a, b) => getCountryDisplayName(a).localeCompare(getCountryDisplayName(b), sortLocale));
   }
 
   function buildPayload() {
