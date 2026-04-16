@@ -63,8 +63,8 @@ Edit `config.js`:
 - No build command required
 - Update `config.js` with test/prod API URLs before deploy
 - Set `PrestoIT:PublicReturnBaseUrl` to:
-  - `https://<your-netlify-domain>/payment/public-result`
-  - Presto redirect includes `/{merchantOrderId}`, and Netlify route rewrite is already configured in `netlify.toml`
+  - `https://visitortax.tokotor.online/payment/public-result`
+  - Presto redirect includes `/{merchantOrderId}`, and the static-site route rewrite is already configured in `netlify.toml`
 
 ## Branding assets
 
